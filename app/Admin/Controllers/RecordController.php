@@ -28,9 +28,7 @@ class RecordController extends AdminController
         $grid = new Grid(new Record());
 
         // $grid->quickSearch('id','seat','member_ID','member_amount','order','order_amount','total','paid','online','debt');
-
-
-        $grid->column('id',__('ID'));
+        $grid->column('id',__('ID'))->sortable();
         $grid->column('seat',__('Seat'));
         $grid->column('member_ID',__('Member ID'))->filter('like');
         $grid->column('member_amount',__('Amount'))->display(function ($value) {

@@ -17,6 +17,8 @@ Route::group([
     $router->get('/dashboard/unpaid', 'HomeController@unpaid')->name('unpaid');
     $router->get('/dashboard/stock', 'HomeController@stock')->name('stock');
     $router->post('/records/subtract-drink-qty', 'RecordController@subtractDrinkQty')->name('subtract-drink-qty');
+    $router->post('/records/{id}/subtract-drink-qty', 'RecordController@subtractDrinkQty')->name('subtract-drink-qty');
     $router->resource('records', RecordController::class);
     $router->resource('inventories', InventoryController::class);
+    $router->resource('outcomes', OutcomeController::class);
 });
