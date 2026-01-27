@@ -45,15 +45,24 @@ php artisan storage:link
 ## Database Setup
 
 Create a database named:
+
 rightclick
+
+
 Import the SQL file into the database:
+
 Find the file: rightclick.sql
+
 Import it using phpMyAdmin or CLI:
+
 mysql -u YOUR_DB_USER -p rightclick < rightclick.sql
+
 Update your .env database credentials:
 
 DB_DATABASE=rightclick
+
 DB_USERNAME=YOUR_DB_USER
+
 DB_PASSWORD=YOUR_DB_PASSWORD
 
 Run the Project
