@@ -19,3 +19,6 @@
  */
 
 Encore\Admin\Form::forget(['map', 'editor']);
+
+// Add Font Awesome icons
+Admin::js('https://kit.fontawesome.com/89a23f10b5.js');

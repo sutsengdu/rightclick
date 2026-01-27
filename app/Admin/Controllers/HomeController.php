@@ -6,7 +6,7 @@ use App\Models\Record;
 use App\Models\Inventory;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use Encore\Admin\Controllers\Dashboard;
+use App\Admin\Controllers\Dashboard;
 use Encore\Admin\Layout\Column;
 use Encore\Admin\Layout\Content;
 use Encore\Admin\Layout\Row;
