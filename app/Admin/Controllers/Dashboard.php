@@ -29,24 +29,20 @@ class Dashboard
         $inventories = DB::table('inventories')->where('type','Drink')->select('item_name', 'qty')->get();
         $inventoriesAll = DB::table('inventories')->where('type','Drink')->pluck('item_name')->toArray();
         $records = DB::table('records')->orderBy('order')->pluck('order')->toArray();
+        // Retrieve the daily sums of 'total' column
+        $dailyTotals = DB::table('records')
+            ->selectRaw('DATE(created_at) as date, SUM(total) as sum_total')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
 
+        $dailyAmounts = DB::table('records')
+            ->selectRaw('DATE(created_at) as date, SUM(member_amount) as sum_amount')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
 
-        // Get the current month and year
-        $currentMonth = Carbon::now()->month;
-        $currentYear = Carbon::now()->year;
-         // Retrieve the daily sums of 'total' column for the current month
-
-         $dailyTotals = DB::table('records')
-         ->selectRaw('DATE(created_at) as date, SUM(total) as sum_total')
-         ->groupBy('date')
-         ->get();
-
-         $dailyAmounts = DB::table('records')
-        ->selectRaw('DATE(created_at) as date, SUM(member_amount) as sum_amount')
-        ->groupBy('date')
-        ->get();
-
-        // Prepare data for bar chart
+        // Prepare data for daily bar charts
         $dates = $dailyTotals->pluck('date')->map(function ($date) {
             return Carbon::parse($date)->format('M d');
         });
@@ -56,7 +52,55 @@ class Dashboard
         $amounts = $dailyAmounts->pluck('sum_amount')->map(function ($amount) {
             return intval($amount);
         });
-        return view('vendor.laravel-admin.addons.chart', compact('inventories','dates', 'totals','amounts','inventoriesAll','records'));
+
+        // Weekly aggregates (all weeks, will paginate in frontend)
+        $weeklyTotals = DB::table('records')
+            ->selectRaw('YEARWEEK(created_at, 1) as yearweek, SUM(total) as sum_total')
+            ->groupBy('yearweek')
+            ->orderBy('yearweek')
+            ->get();
+
+        $weeklyAmounts = DB::table('records')
+            ->selectRaw('YEARWEEK(created_at, 1) as yearweek, SUM(member_amount) as sum_amount')
+            ->groupBy('yearweek')
+            ->orderBy('yearweek')
+            ->get();
+
+        // Weekly orders (concatenated order strings per week) for weekly order count chart
+        $weeklyOrders = DB::table('records')
+            ->selectRaw('YEARWEEK(created_at, 1) as yearweek, GROUP_CONCAT(`order` SEPARATOR " ||| ") as orders_concat')
+            ->groupBy('yearweek')
+            ->orderBy('yearweek')
+            ->get();
+
+        // Use sequential week labels so the last one is always the latest week
+        $weekLabels = $weeklyTotals->values()->map(function ($row, $index) {
+            return 'W' . ($index + 1);
+        });
+
+        $weeklyTotalValues = $weeklyTotals->pluck('sum_total')->map(function ($total) {
+            return intval($total);
+        });
+
+        $weeklyAmountValues = $weeklyAmounts->pluck('sum_amount')->map(function ($amount) {
+            return intval($amount);
+        });
+
+        return view(
+            'vendor.laravel-admin.addons.chart',
+            compact(
+                'inventories',
+                'dates',
+                'totals',
+                'amounts',
+                'inventoriesAll',
+                'records',
+                'weekLabels',
+                'weeklyTotalValues',
+                'weeklyAmountValues',
+                'weeklyOrders'
+            )
+        );
     }
 
     public static function online()

@@ -12,10 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('outcomes', function (Blueprint $table) {
+            // id: bigint(20) unsigned, primary, auto_increment
             $table->id();
-            $table->text('description')->nullable();
-            $table->decimal('price')->nullable();
-            $table->timestamps();
+
+            // description: varchar(255) utf8mb4_unicode_ci, NOT NULL
+            $table->string('description', 255);
+
+            // price: decimal(8,2), NOT NULL
+            $table->decimal('price', 8, 2);
+
+            // created_at / updated_at: timestamp, nullable
+            $table->timestamp('created_at')->nullable();
+            $table->timestamp('updated_at')->nullable();
         });
     }
 
