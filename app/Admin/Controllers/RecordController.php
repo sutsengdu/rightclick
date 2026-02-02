@@ -9,6 +9,7 @@ use Encore\Admin\Form;
 use Encore\Admin\Grid;
 use Encore\Admin\Show;
 use App\Models\Inventory;
+use App\Models\Seat;
 class RecordController extends AdminController
 {
     /**
@@ -96,26 +97,11 @@ class RecordController extends AdminController
         $form->display('id',__('ID'));
         $form->column(1/2, function($form){
 
-            $form->select('seat',__('Seat'))->options([
-                'A1' => 'A1',
-                'A2' => 'A2',
-                'A3' => 'A3',
-                'A4' => 'A4',
-                'A5' => 'A5',
-                'A6' => 'A6',
-                'A7' => 'A7',
-                'A8' => 'A8',
-                'A9' => 'A9',
-                'A10' => 'A10',
-                'A11' => 'A11',
-                'A12' => 'A12',
-                'A13' => 'A13',
-                'A14' => 'A14',
-                'A15' => 'A15',
-                'A16' => 'A16',
-                'V1' => 'V1',
-                'V2' => 'V2',
-            ]);
+            $seatOptions = Seat::query()
+                ->orderByRaw('LEFT(code, 1), CAST(SUBSTRING(code, 2) AS UNSIGNED), code')
+                ->pluck('code', 'code')
+                ->toArray();
+            $form->select('seat', __('Seat'))->options($seatOptions);
             $form->text('member_ID',__('Member ID'))->default('Time');
             $form->number('member_amount',__('Member Amount'))->default(0);
             $form->number('order_amount',__('Order Amount'))->default(0);

@@ -6,10 +6,9 @@ use Encore\Admin\Admin;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use App\Models\Record;
-use Encore\Admin\Controllers\AdminController;
-use Encore\Admin\Grid;
 use Carbon\Carbon;
 use App\Models\Inventory;
+use App\Models\Seat;
 use ConsoleTVs\Charts\Classes\Chartjs\Chart;
 
 class Dashboard
@@ -73,6 +72,21 @@ class Dashboard
             ->orderBy('yearweek')
             ->get();
 
+        $monthlyWeeklyOutcomes = DB::table('outcomes')
+            ->where('created_at', '>=', Carbon::now()->subMonth())
+            ->selectRaw('YEARWEEK(created_at, 1) as yearweek, SUM(price) as sum_price')
+            ->groupBy('yearweek')
+            ->orderBy('yearweek')
+            ->get();
+
+        $outcomeWeekLabels = $monthlyWeeklyOutcomes->values()->map(function ($row, $index) {
+            return 'W' . ($index + 1);
+        });
+
+        $weeklyOutcomeValues = $monthlyWeeklyOutcomes->pluck('sum_price')->map(function ($amount) {
+            return floatval($amount);
+        });
+
         // Use sequential week labels so the last one is always the latest week
         $weekLabels = $weeklyTotals->values()->map(function ($row, $index) {
             return 'W' . ($index + 1);
@@ -98,7 +112,9 @@ class Dashboard
                 'weekLabels',
                 'weeklyTotalValues',
                 'weeklyAmountValues',
-                'weeklyOrders'
+                'weeklyOrders',
+                'outcomeWeekLabels',
+                'weeklyOutcomeValues'
             )
         );
     }
@@ -111,7 +127,17 @@ class Dashboard
         // Create an associative array with seats as keys and member IDs as values
         $seatMemberIds = array_combine($seats, $onlinememberids);
 
-        $statusArray  = ['A1', 'A2', 'A3','A4','A5','A6','A7','A8','A9','A10','A11','A12','A13','A14','A15','A16','V1','V2'];
+        // Seat list comes from seats table (admin -> seats)
+        // Natural sort: A1, A2, ... A10 (instead of A1, A10, A11, A2)
+        $statusArray = Seat::query()
+            ->orderByRaw('LEFT(code, 1), CAST(SUBSTRING(code, 2) AS UNSIGNED), code')
+            ->pluck('code')
+            ->toArray();
+
+        // Fallback (in case seats table is empty)
+        if (empty($statusArray)) {
+            $statusArray  = ['A1', 'A2', 'A3','A4','A5','A6','A7','A8','A9','A10','A11','A12','A13','A14','A15','A16','V1','V2'];
+        }
 
         return view('vendor.laravel-admin.addons.online')->with([
             'seats' => $seats,

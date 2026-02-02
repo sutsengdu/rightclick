@@ -21,4 +21,5 @@ Route::group([
     $router->resource('records', RecordController::class);
     $router->resource('inventories', InventoryController::class);
     $router->resource('outcomes', OutcomeController::class);
+    $router->resource('seats', SeatController::class);
 });

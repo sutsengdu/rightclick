@@ -12,9 +12,80 @@
     border-radius: 20px;
 }
 
+ .dashboard-matrix {
+    width: 100%;
+    margin: 0;
+    table-layout: fixed;
+    border-collapse: collapse;
+ }
+
+ .dashboard-matrix td {
+    padding: 15px;
+    vertical-align: top;
+    box-sizing: border-box;
+ }
+
+ .dashboard-matrix .card {
+    padding: 0;
+ }
+
+ .dashboard-matrix .card-in-chart {
+    padding: 18px;
+ }
+
+ .dashboard-matrix .matrix-chart {
+    position: relative;
+    width: 100%;
+    height: 420px;
+ }
+
+ .dashboard-matrix-wrapper {
+    padding-left: 0;
+    padding-right: 0;
+ }
+
+ .dashboard-charts-container {
+    padding-left: 0;
+    padding-right: 0;
+ }
+
+ .dashboard-charts-container .row {
+    margin-left: 0;
+    margin-right: 0;
+ }
+
+ .dashboard-matrix .matrix-chart canvas {
+    width: 100% !important;
+    height: 100% !important;
+ }
+
+ @media (max-width: 767px) {
+    .dashboard-charts-container {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+
+    .dashboard-matrix,
+    .dashboard-matrix tbody,
+    .dashboard-matrix tr,
+    .dashboard-matrix td {
+        display: block;
+        width: 100% !important;
+    }
+
+    .dashboard-matrix td {
+        padding: 0;
+        margin-bottom: 15px;
+    }
+
+    .dashboard-matrix .matrix-chart {
+        height: 320px;
+    }
+ }
+
 </style>
 
-<div class="container-fluid">
+<div class="container-fluid dashboard-charts-container">
     <div class="row">
         <div class="card col-md-6">
             <div class="card-in-chart">
@@ -34,28 +105,8 @@
                 </div>
             </div>
         </div>
-        <div class="card col-md-4">
-            <div class="card-in-chart">
-                <div class="text-center" style="margin-bottom: 10px; font-weight: 600;">
-                    Inventory Stock Proportion
-                </div>
-                <canvas id="pieChart1"></canvas>
-            </div>
-        </div>
-        <div class="card col-md-8">
-            <div class="card-in-chart">
-                <canvas id="barChart3"></canvas>
-                <div class="text-center">
-                    <button onclick="displayPreviousOrders()" class="btn btn-success">
-                        <i class="fa-solid fa-chevron-left"></i>
-                    </button>
-                    <button onclick="displayNextOrders()" class="btn btn-success">
-                        <i class="fa-solid fa-chevron-right"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
+
     <div class="row" style="margin-top: 15px;">
         <div class="card col-md-6">
             <div class="card-in-chart">
@@ -82,6 +133,61 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="row" style="margin-top: 15px;">
+        <div class="col-md-12 dashboard-matrix-wrapper">
+            <table class="dashboard-matrix">
+                <tr>
+                    <td style="width: 33%; vertical-align: top;">
+                        <div class="card" style="width: 100%;">
+                            <div class="card-in-chart">
+                                <div class="text-center" style="margin-bottom: 10px; font-weight: 600;">
+                                    Inventory Stock Proportion
+                                </div>
+                                <div class="matrix-chart">
+                                    <canvas id="pieChart1"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="width: 33%; vertical-align: top;">
+                        <div class="card" style="width: 100%;">
+                            <div class="card-in-chart">
+                                <div class="matrix-chart">
+                                    <canvas id="barChart3"></canvas>
+                                </div>
+                                <div class="text-center">
+                                    <button onclick="displayPreviousOrders()" class="btn btn-success">
+                                        <i class="fa-solid fa-chevron-left"></i>
+                                    </button>
+                                    <button onclick="displayNextOrders()" class="btn btn-success">
+                                        <i class="fa-solid fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="width: 33%; vertical-align: top;">
+                        <div class="card" style="width: 100%;">
+                            <div class="card-in-chart">
+                                <div class="matrix-chart">
+                                    <canvas id="barChartOutcomes"></canvas>
+                                </div>
+                                <div class="text-center">
+                                    <button onclick="displayPreviousOutcomes()" class="btn btn-primary">
+                                        <i class="fa-solid fa-chevron-left"></i>
+                                    </button>
+                                    <button onclick="displayNextOutcomes()" class="btn btn-primary">
+                                        <i class="fa-solid fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
 </div>
@@ -406,7 +512,7 @@
                     bottom: 30,
                 },
             },
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: {
                     position: 'bottom',
@@ -488,7 +594,7 @@
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             scales: {
                 x: {
                     grid: {
@@ -534,6 +640,97 @@
         if (currentOrderWeekIdx + 1 < maxWeeksOrders) {
             currentOrderWeekIdx += 1;
             updateOrderChart();
+        }
+    }
+
+    // Weekly outcomes (last month) with navigation
+    var outcomeWeekLabels = {!! $outcomeWeekLabels !!};
+    var weeklyOutcomeValues = {!! $weeklyOutcomeValues !!};
+
+    var outcomeWindowSize = 4;
+    var outcomeStartIdx = Math.max(outcomeWeekLabels.length - outcomeWindowSize, 0);
+    var outcomeEndIdx = outcomeWeekLabels.length - 1;
+
+    function getDisplayedOutcomeData() {
+        var labels = outcomeWeekLabels.slice(outcomeStartIdx, outcomeEndIdx + 1);
+        var values = weeklyOutcomeValues.slice(outcomeStartIdx, outcomeEndIdx + 1);
+
+        return { labels: labels, values: values };
+    }
+
+    function getOutcomeLabelText(display) {
+        if (!display || !display.labels || display.labels.length === 0) {
+            return 'Weekly Outcomes (Last Month)';
+        }
+
+        return 'Weekly Outcomes (Last Month) - ' + display.labels[0] + ' to ' + display.labels[display.labels.length - 1];
+    }
+
+    var outcomeDisplay = getDisplayedOutcomeData();
+
+    var ctxOutcomes = document.getElementById('barChartOutcomes').getContext('2d');
+    var barChartOutcomes = new Chart(ctxOutcomes, {
+        type: 'bar',
+        data: {
+            labels: outcomeDisplay.labels,
+            datasets: [{
+                label: getOutcomeLabelText(outcomeDisplay),
+                data: outcomeDisplay.values,
+                backgroundColor: 'rgba(54, 162, 235, 0.35)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    grid: {
+                        display: false,
+                    },
+                },
+                y: {
+                    beginAtZero: true,
+                },
+            },
+            legend: {
+                display: false,
+            },
+            tooltips: {
+                callbacks: {
+                    label: function (context) {
+                        var label = context.label || '';
+                        var value = context.parsed.y || 0;
+                        return label + ': ' + value;
+                    }
+                }
+            }
+        }
+    });
+
+    function updateOutcomeChart() {
+        var display = getDisplayedOutcomeData();
+
+        barChartOutcomes.data.labels = display.labels;
+        barChartOutcomes.data.datasets[0].data = display.values;
+        barChartOutcomes.data.datasets[0].label = getOutcomeLabelText(display);
+        barChartOutcomes.update();
+    }
+
+    function displayPreviousOutcomes() {
+        if (outcomeStartIdx - outcomeWindowSize >= 0) {
+            outcomeStartIdx -= outcomeWindowSize;
+            outcomeEndIdx -= outcomeWindowSize;
+            updateOutcomeChart();
+        }
+    }
+
+    function displayNextOutcomes() {
+        if (outcomeEndIdx + outcomeWindowSize < outcomeWeekLabels.length) {
+            outcomeStartIdx += outcomeWindowSize;
+            outcomeEndIdx += outcomeWindowSize;
+            updateOutcomeChart();
         }
     }
 
