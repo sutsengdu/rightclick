@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\RecordController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\OutcomeController;
+use App\Http\Controllers\Api\SeatController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +31,13 @@ Route::prefix('records')->group(function () {
     Route::patch('/{record}', [RecordController::class, 'update']);
     Route::delete('/{record}', [RecordController::class, 'destroy']);
 });
+
+// Seats API
+Route::get('/seats', [SeatController::class, 'index']);
+
+// Shortcut route for total top members_amount
+Route::get('/top-members', [RecordController::class, 'topMembers']);
+
 
 // Inventory API Routes
 Route::prefix('inventories')->group(function () {

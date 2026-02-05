@@ -2,6 +2,10 @@
 
 use Illuminate\Routing\Router;
 use App\Admin\Controllers\RecordController;
+use App\Admin\Controllers\InventoryController;
+use App\Admin\Controllers\OutcomeController;
+use App\Admin\Controllers\SeatController;
+use App\Admin\Controllers\AnnouncementController;
 Admin::routes();
 
 Route::group([
@@ -22,4 +26,5 @@ Route::group([
     $router->resource('inventories', InventoryController::class);
     $router->resource('outcomes', OutcomeController::class);
     $router->resource('seats', SeatController::class);
+    $router->resource('announcements', AnnouncementController::class);
 });

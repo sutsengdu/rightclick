@@ -10,6 +10,7 @@ use App\Models\Record;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class RecordController extends Controller
 {
@@ -113,5 +114,22 @@ class RecordController extends Controller
         return response()->json([
             'message' => 'Record deleted successfully'
         ], 200);
+    }
+
+    /**
+     * Return top members by sum of member_amount.
+     */
+    public function topMembers(Request $request): JsonResponse
+    {
+        $limit = (int) $request->get('limit', 10);
+
+        $top = DB::table('records')
+            ->select('member_ID', DB::raw('SUM(member_amount) as total_member_amount'))
+            ->groupBy('member_ID')
+            ->orderByDesc('total_member_amount')
+            ->limit($limit)
+            ->get();
+
+        return response()->json(['data' => $top]);
     }
 }
