@@ -37,6 +37,7 @@ Route::get('/seats', [SeatController::class, 'index']);
 
 // Shortcut route for total top members_amount
 Route::get('/top-members', [RecordController::class, 'topMembers']);
+Route::get('/top-debtors', [RecordController::class, 'topDebtors']);
 
 
 // Inventory API Routes

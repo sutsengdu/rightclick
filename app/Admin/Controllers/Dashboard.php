@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use Encore\Admin\Admin;
+use Encore\Admin\Grid;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use App\Models\Record;

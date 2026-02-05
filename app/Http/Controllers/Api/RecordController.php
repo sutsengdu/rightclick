@@ -119,17 +119,71 @@ class RecordController extends Controller
     /**
      * Return top members by sum of member_amount.
      */
-    public function topMembers(Request $request): JsonResponse
+     public function topMembers(Request $request): JsonResponse
     {
-        $limit = (int) $request->get('limit', 10);
+        $limit = (int) $request->query('limit', 10);
+        $limit = max(1, min($limit, 10000)); // clamp 1..100
 
         $top = DB::table('records')
             ->select('member_ID', DB::raw('SUM(member_amount) as total_member_amount'))
+            ->whereNotNull('member_ID')
+            ->where('member_ID', '!=', '')
             ->groupBy('member_ID')
             ->orderByDesc('total_member_amount')
             ->limit($limit)
             ->get();
 
-        return response()->json(['data' => $top]);
+        return response()->json([
+            'data' => $top,
+        ]);
+    }
+
+    /**
+     * GET /api/records/top-debtors?limit=10
+     * Optional:
+     *   - ?date=today
+     *   - ?date=2026-01-27
+     *   - ?month=2026-01
+     */
+    public function topDebtors(Request $request): JsonResponse
+    {
+        $limit = (int) $request->query('limit', 10);
+        $limit = max(1, min($limit, 10000)); // clamp 1..100
+
+        $query = DB::table('records')
+            ->select('member_ID', DB::raw('SUM(debt) as total_debt'))
+            ->where('debt', '>', 0)
+            ->whereNotNull('member_ID')
+            ->where('member_ID', '!=', '')
+            ->groupBy('member_ID')
+            ->orderByDesc('total_debt');
+
+        // Filter by specific date (e.g. ?date=today or ?date=2026-01-27)
+        if ($request->filled('date')) {
+            $date = $request->query('date');
+
+            if ($date === 'today') {
+                $date = now()->toDateString(); // YYYY-MM-DD
+            }
+
+            // created_date looks like: "2026-01-27 14:53:43"
+            $query->whereDate('created_date', $date);
+        }
+
+        // Filter by month (e.g. ?month=2026-01)
+        if ($request->filled('month')) {
+            $month = $request->query('month'); // "YYYY-MM"
+            $query->where('created_date', 'like', $month . '%');
+        }
+
+        $topDebtMembers = $query
+            ->groupBy('member_ID')
+            ->orderByDesc('total_debt')
+            ->limit($limit)
+            ->get();
+
+        return response()->json([
+            'data' => $topDebtMembers,
+        ]);
     }
 }
