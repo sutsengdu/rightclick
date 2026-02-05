@@ -17,8 +17,8 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Auth::routes();
-
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
-Route::get('/record', [App\Http\Controllers\Record::class, 'index']);
+// Simple admin seats page (renders seats view styled like dashboard online)
+// Route::get('/admin/seats', function () {
+//     return view('vendor.laravel-admin.dashboard.seats');
+// });
 
