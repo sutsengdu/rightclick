@@ -2,62 +2,100 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
+
 use App\Http\Controllers\Api\RecordController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\OutcomeController;
 use App\Http\Controllers\Api\SeatController;
+use App\Http\Controllers\Api\AnnouncementController;
+use App\Http\Controllers\Api\PricingController;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| AUTH ROUTES (Public)
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+// LOGIN (Public) -> returns token
+Route::post('/login', function (Request $request) {
+
+    $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required', 'string'],
+        'device_name' => ['nullable', 'string'],
+    ]);
+
+    $user = User::where('email', $request->email)->first();
+
+    if (!$user || !Hash::check($request->password, $user->password)) {
+        return response()->json(['message' => 'Invalid credentials'], 401);
+    }
+
+    // Optional: Remove old tokens (force one active token per user)
+    // $user->tokens()->delete();
+
+    $tokenName = $request->device_name ?? 'api-token';
+    $token = $user->createToken($tokenName)->plainTextToken;
+
+    return response()->json([
+        'token' => $token,
+        'user'  => $user,
+    ]);
 });
 
-// Records API Routes
-Route::prefix('records')->group(function () {
-    Route::get('/', [RecordController::class, 'index']);
-    Route::post('/', [RecordController::class, 'store']);
-    Route::get('/{record}', [RecordController::class, 'show']);
-    Route::put('/{record}', [RecordController::class, 'update']);
-    Route::patch('/{record}', [RecordController::class, 'update']);
-    Route::delete('/{record}', [RecordController::class, 'destroy']);
+
+/*
+|--------------------------------------------------------------------------
+| PROTECTED ROUTES (Require Bearer Token)
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->group(function () {
+
+    // LOGOUT -> revoke current token
+    Route::post('/logout', function (Request $request) {
+        $request->user()->currentAccessToken()->delete();
+        return response()->json(['message' => 'Logged out']);
+    });
+
+    // CURRENT LOGGED IN USER
+    Route::get('/user', function (Request $request) {
+        return response()->json($request->user());
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Your APIs (Protected)
+    |--------------------------------------------------------------------------
+    */
+
+    // Records API Routes
+    Route::apiResource('records', RecordController::class);
+    Route::get('/top-members', [RecordController::class, 'topMembers']);
+    Route::get('/top-debtors', [RecordController::class, 'topDebtors']);
+
+    // Inventory API Routes
+    Route::post('/inventories/{inventory}/quantity', [InventoryController::class, 'updateQuantity']);
+    Route::apiResource('inventories', InventoryController::class);
+
+    // Outcomes API Routes
+    Route::get('/outcomes/total', [OutcomeController::class, 'total']);
+    Route::apiResource('outcomes', OutcomeController::class);
+
+    // Protected Pricing & Announcements (Create, Update, Delete)
+    Route::apiResource('pricing', PricingController::class)->except(['index', 'show']);
+    Route::apiResource('announcements', AnnouncementController::class)->except(['index', 'show']);
+
 });
 
-// Seats API
+// Pricing API Routes (Public Read)
+Route::get('/pricing', [PricingController::class, 'index']);
+Route::get('/pricing/{pricing}', [PricingController::class, 'show']);
+
+// Seats API to show online status
 Route::get('/seats', [SeatController::class, 'index']);
 
-// Shortcut route for total top members_amount
-Route::get('/top-members', [RecordController::class, 'topMembers']);
-Route::get('/top-debtors', [RecordController::class, 'topDebtors']);
-
-
-// Inventory API Routes
-Route::prefix('inventories')->group(function () {
-    Route::get('/', [InventoryController::class, 'index']);
-    Route::post('/', [InventoryController::class, 'store']);
-    Route::get('/{inventory}', [InventoryController::class, 'show']);
-    Route::put('/{inventory}', [InventoryController::class, 'update']);
-    Route::patch('/{inventory}', [InventoryController::class, 'update']);
-    Route::delete('/{inventory}', [InventoryController::class, 'destroy']);
-    Route::post('/{inventory}/update-quantity', [InventoryController::class, 'updateQuantity']);
-});
-
-// Outcomes API Routes
-Route::prefix('outcomes')->group(function () {
-    Route::get('/', [OutcomeController::class, 'index']);
-    Route::post('/', [OutcomeController::class, 'store']);
-    Route::get('/total', [OutcomeController::class, 'total']);
-    Route::get('/{outcome}', [OutcomeController::class, 'show']);
-    Route::put('/{outcome}', [OutcomeController::class, 'update']);
-    Route::patch('/{outcome}', [OutcomeController::class, 'update']);
-    Route::delete('/{outcome}', [OutcomeController::class, 'destroy']);
-});
+// Announcements API Routes (Public Read)
+Route::get('/announcements', [AnnouncementController::class, 'index']);
+Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show']);

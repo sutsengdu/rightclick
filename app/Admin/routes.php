@@ -6,6 +6,7 @@ use App\Admin\Controllers\InventoryController;
 use App\Admin\Controllers\OutcomeController;
 use App\Admin\Controllers\SeatController;
 use App\Admin\Controllers\AnnouncementController;
+use App\Admin\Controllers\PricingController;
 Admin::routes();
 
 Route::group([
@@ -27,4 +28,5 @@ Route::group([
     $router->resource('outcomes', OutcomeController::class);
     $router->resource('seats', SeatController::class);
     $router->resource('announcements', AnnouncementController::class);
+    $router->resource('pricing', PricingController::class);
 });
