@@ -124,41 +124,215 @@ class RecordController extends AdminController
         $form->column(1/2, function($form){
 
             $inventoryDrinks = Inventory::where('type','Drink')->pluck('item_name', 'id')->toArray();
-            $form->select('Select Drink')->options($inventoryDrinks);
+            $drinkOptions = '<option value="">-- Choose Drink --</option>';
+            foreach($inventoryDrinks as $id => $name) {
+                $drinkOptions .= '<option value="'.$id.'">'.$name.'</option>';
+            }
+
             $inventoryFoods = Inventory::where('type','Food')->pluck('item_name', 'id')->toArray();
-            $form->select('Select Food')->options($inventoryFoods);
+            $foodOptions = '<option value="">-- Choose Food --</option>';
+            foreach($inventoryFoods as $id => $name) {
+                $foodOptions .= '<option value="'.$id.'">'.$name.'</option>';
+            }
+
             $form->html('
-                <button type="button" id="addToOrderBtn" class="btn btn-primary">Add to Order</button>
+                <div class="box box-solid box-primary" style="margin-top: 15px;">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-shopping-cart"></i> Manage Order Items</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="row" style="margin-bottom: 20px;">
+                            <div class="col-sm-6">
+                                <label>Select Drink</label>
+                                <select class="form-control custom-item-select" name="custom_drink">
+                                    '.$drinkOptions.'
+                                </select>
+                            </div>
+                            <div class="col-sm-6">
+                                <label>Select Food</label>
+                                <select class="form-control custom-item-select" name="custom_food">
+                                    '.$foodOptions.'
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row" style="margin-bottom: 15px;">
+                            <div class="col-sm-6">
+                                <label>Item Quantity</label>
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-cubes"></i></span>
+                                    <input type="number" id="itemQty" class="form-control" value="1" min="1">
+                                </div>
+                            </div>
+                            <div class="col-sm-6" style="padding-top: 25px;">
+                                <button type="button" id="addToOrderBtn" class="btn btn-primary btn-block"><i class="fa fa-plus-circle"></i> Add to Order</button>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 20px;">
+                            <label><i class="fa fa-list"></i> Current Order Items</label>
+                            <div class="well well-sm" style="background-color: #f9fafc; min-height: 50px;">
+                                <ul id="order-list" class="list-group" style="margin-bottom: 0;">
+                                    <!-- Items will be appended here dynamically -->
+                                    <li class="list-group-item text-muted text-center" id="empty-state-li" style="border: none; background: transparent;">No items added yet</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <style>
+                    #order-list .list-group-item { margin-bottom: 5px; border-radius: 4px; border-left: 4px solid #3c8dbc; }
+                    .remove-item-btn { padding: 2px 8px; font-size: 12px; }
+                </style>
+                
                 <script>
                 $(document).ready(function() {
-                    $("#addToOrderBtn").click(function() {
-                        var selectedDrink = $("select[name=\'Select Drink\'] option:selected").text();
-                        var selectedFood = $("select[name=\'Select Food\'] option:selected").text();
-                        var orderField = $("textarea[name=\'order\']");
-                        var orderText = selectedDrink;
+                    const csrfToken = $(\'meta[name="csrf-token"]\').attr(\'content\');
+                    const manageStockUrl = "'.route('admin.manage-inventory-stock').'";
+                    
+                    function updateOrderTextarea() {
+                        let orderText = "";
+                        $("#order-list li:not(#empty-state-li)").each(function() {
+                            let iName = $(this).data("item-name");
+                            if (iName) {
+                                orderText += iName + " ";
+                            }
+                        });
+                        $("textarea[name=\'order\']").val(orderText.trim());
+                    }
 
-                        var selectedDrinkId = $("select[name=\'Select Drink\']").val();
-                        if (selectedDrinkId) {
-                            $.ajax({
-                                url: "subtract-drink-qty",
-                                type: "POST",
-                                data: { drinkId: selectedDrinkId },
-                                headers: {
-                                    \'X-CSRF-TOKEN\': $(\'meta[name="csrf-token"]\').attr(\'content\')
-                                },
-                                success: function(response) {
-                                    console.log(response);
-                                },
-                                error: function(xhr, status, error) {
-                                    console.error(error);
+                    // Auto-clear opposite dropdown
+                    $(".custom-item-select").change(function() {
+                        if($(this).attr("name") === "custom_drink" && $(this).val() !== "") {
+                            $("select[name=\'custom_food\']").val("");
+                        } else if($(this).attr("name") === "custom_food" && $(this).val() !== "") {
+                            $("select[name=\'custom_drink\']").val("");
+                        }
+                    });
+
+                    $("#addToOrderBtn").off("click").on("click", function() {
+                        let selectedDrinkId = $("select[name=\'custom_drink\']").val();
+                        let selectedDrinkName = selectedDrinkId ? $("select[name=\'custom_drink\'] option:selected").text() : "";
+                        
+                        let selectedFoodId = $("select[name=\'custom_food\']").val();
+                        let selectedFoodName = selectedFoodId ? $("select[name=\'custom_food\'] option:selected").text() : "";
+                        
+                        let qty = parseInt($("#itemQty").val()) || 1;
+                        
+                        // Default to drink if both selected, or prioritize whichever is available
+                        let itemId = selectedDrinkId || selectedFoodId;
+                        let itemName = selectedDrinkId ? selectedDrinkName : selectedFoodName;
+                        
+                        if (!itemId || !itemName) {
+                            alert("Please select a drink or food item first.");
+                            return;
+                        }
+
+                        // Call ajax to reduce stock
+                        $.ajax({
+                            url: manageStockUrl,
+                            type: "POST",
+                            data: { 
+                                itemId: itemId, 
+                                qty: qty, 
+                                action: "subtract" 
+                            },
+                            headers: {
+                                \'X-CSRF-TOKEN\': csrfToken
+                            },
+                            success: function(response) {
+                                if(response.success) {
+                                  // Update order amount with the price
+                                  let currentOrderAmount = parseInt($("input[name=\'order_amount\']").val()) || 0;
+                                  let itemPrice = parseInt(response.price) || 0;
+                                  
+                                  // Append to visual list individually based on quantity
+                                  for (let i = 0; i < qty; i++) {
+                                      let listItemId = "order-item-" + Date.now() + "-" + i;
+                                      let li = \'<li id="\' + listItemId + \'" class="list-group-item d-flex justify-content-between align-items-center" data-item-id="\' + itemId + \'" data-item-name="\' + itemName + \'" data-qty="1" data-price="\' + itemPrice + \'">\';
+                                      li += \'<strong>\' + itemName + \'</strong> <span class="label label-info">\' + itemPrice + \' MMK</span>\';
+                                      li += \' <button type="button" class="btn btn-sm btn-danger remove-item-btn" style="float:right;" data-target="\' + listItemId + \'"><i class="fa fa-trash"></i></button>\';
+                                      li += \'</li>\';
+                                      
+                                      $("#order-list").append(li);
+                                      
+                                      // Accumulate amount for each item
+                                      currentOrderAmount += itemPrice;
+                                  }
+                                  
+                                  // Hide empty state if present
+                                  $("#empty-state-li").hide();
+                                  
+                                  // Set new order amount and auto-sum total
+                                  $("input[name=\'order_amount\']").val(currentOrderAmount);
+                                  $("#addSumBtn").click();
+                                  
+                                  // Re-calculate textarea
+                                  updateOrderTextarea();
+                                  
+                                  // Reset quantity helper
+                                  $("#itemQty").val("1");
                                 }
-                            });
-                        }
+                            },
+                            error: function(xhr) {
+                                let msg = "Failed to add item.";
+                                if(xhr.responseJSON && xhr.responseJSON.message) {
+                                    msg = xhr.responseJSON.message;
+                                }
+                                alert(msg);
+                            }
+                        });
+                    });
 
-                        if(selectedFood !== null) {
-                            orderText += " " + selectedFood;
-                        }
-                        orderField.val(orderField.val() + orderText + " ");
+                    // Remove item logic
+                    $(document).off("click", ".remove-item-btn").on("click", ".remove-item-btn", function() {
+                        let targetId = $(this).data("target");
+                        let $li = $("#" + targetId);
+                        
+                        let itemId = $li.data("item-id");
+                        let qtyToRemove = parseInt($li.data("qty")) || 1;
+                        
+                        // Call ajax to restore stock
+                        $.ajax({
+                            url: manageStockUrl,
+                            type: "POST",
+                            data: { 
+                                itemId: itemId, 
+                                qty: qtyToRemove, 
+                                action: "add" 
+                            },
+                            headers: {
+                                \'X-CSRF-TOKEN\': csrfToken
+                            },
+                            success: function(response) {
+                                if(response.success) {
+                                    // Deduct price from order amount
+                                    let priceToRemove = parseInt($li.data("price")) || 0;
+                                    let currentOrderAmount = parseInt($("input[name=\'order_amount\']").val()) || 0;
+                                    let newOrderAmount = currentOrderAmount - priceToRemove;
+                                    
+                                    // Make sure it doesn\'t go below zero
+                                    if(newOrderAmount < 0) newOrderAmount = 0;
+                                    
+                                    $("input[name=\'order_amount\']").val(newOrderAmount);
+                                    $("#addSumBtn").click();
+
+                                    // Remove from visual list
+                                    $li.remove();
+                                    
+                                    // Check if list is empty
+                                    if ($("#order-list .list-group-item:not(#empty-state-li)").length === 0) {
+                                        $("#empty-state-li").show();
+                                    }
+                                    
+                                    // Re-calculate textarea
+                                    updateOrderTextarea();
+                                }
+                            },
+                            error: function(xhr) {
+                                alert("Failed to remove item and restore stock.");
+                            }
+                        });
                     });
                 });
             </script>
@@ -178,21 +352,35 @@ class RecordController extends AdminController
         return $form;
 
     }
-    public function subtractDrinkQty(Request $request)
+    public function manageInventoryStock(Request $request)
     {
-        $drinkId = $request->input('drinkId');
+        $itemId = $request->input('itemId');
+        $qty = (int) $request->input('qty', 1);
+        $action = $request->input('action', 'subtract');
 
-        // Get the selected drink from the database
-        $drink = Inventory::findOrFail($drinkId);
+        // Get the selected item from the database
+        $item = Inventory::find($itemId);
 
-        // Subtract 1 from the quantity
-        $drink->qty -= 1;
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Item not found'], 404);
+        }
+
+        if ($action === 'subtract') {
+            if ($item->qty < $qty) {
+                return response()->json(['success' => false, 'message' => 'Not enough stock'], 400);
+            }
+            $item->qty -= $qty;
+        } elseif ($action === 'add') {
+            $item->qty += $qty;
+        }
 
         // Save the updated quantity
-        $drink->save();
+        $item->save();
 
-        // You can return a response if needed
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'new_qty' => $item->qty,
+            'price' => $item->price
+        ]);
     }
-
 }

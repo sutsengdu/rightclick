@@ -21,8 +21,8 @@ Route::group([
     $router->get('/dashboard/debt', 'HomeController@debt')->name('debt');
     $router->get('/dashboard/unpaid', 'HomeController@unpaid')->name('unpaid');
     $router->get('/dashboard/stock', 'HomeController@stock')->name('stock');
-    $router->post('/records/subtract-drink-qty', 'RecordController@subtractDrinkQty')->name('subtract-drink-qty');
-    $router->post('/records/{id}/subtract-drink-qty', 'RecordController@subtractDrinkQty')->name('subtract-drink-qty');
+    $router->post('/records/manage-inventory-stock', 'RecordController@manageInventoryStock')->name('manage-inventory-stock');
+    $router->post('/records/{id}/manage-inventory-stock', 'RecordController@manageInventoryStock')->name('manage-inventory-stock-by-id');
     $router->resource('records', RecordController::class);
     $router->resource('inventories', InventoryController::class);
     $router->resource('outcomes', OutcomeController::class);
